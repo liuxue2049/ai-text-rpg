@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>墨境 — AI 文字 RPG</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Noto+Serif+SC:wght@300;400;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -218,6 +217,18 @@ body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text);mi
 .form-hint{font-size:.72rem;color:var(--text-muted);margin-top:4px;line-height:1.5;}
 .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;}
 
+/* DEBUG BAR */
+.debug-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  background:rgba(0,0,0,.92);border-top:1px solid #333;
+  padding:8px 12px;font-family:monospace;font-size:11px;
+  color:#888;max-height:60px;overflow-y:auto;
+  display:none;
+}
+.debug-bar.show{display:block;}
+.debug-bar .err{color:#f87171;}
+.debug-bar .ok{color:#4ade80;}
+
 @media(max-width:768px){
   .game-body{flex-direction:column;}
   .game-sidebar{width:100%;max-height:0;overflow:hidden;padding:0;border-right:none;border-bottom:1px solid var(--border);transition:max-height .3s,padding .3s;}
@@ -246,6 +257,7 @@ body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text);mi
     </div>
     <div style="margin-top:20px">
       <button class="btn-ghost" id="btn-settings-title">⚙ 设置</button>
+      <button class="btn-ghost" id="btn-test" style="margin-left:8px;color:#4ade80;border-color:#4ade80;">🔗 测试连接</button>
     </div>
   </div>
 </div>
@@ -328,248 +340,302 @@ body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text);mi
   </div>
 </div>
 
+<div class="debug-bar" id="debug-bar"></div>
+
 <script>
-const WORLDS=[{
+/* DEBUG */
+var DBG=document.getElementById('debug-bar');
+function dbg(msg,type){
+  DBG.classList.add('show');
+  var s=document.createElement('span');
+  s.className=type||'';s.textContent=msg+'  ';
+  DBG.appendChild(s);DBG.scrollTop=DBG.scrollHeight;
+}
+window.onerror=function(msg,url,line){
+  dbg('JS错误: '+msg+' (行'+line+')','err');
+};
+
+/* WORLDS */
+var WORLDS=[{
   id:'xuanhuan',name:'玄幻大陆',subtitle:'修仙问道·东方玄幻',
   desc:'灵气充沛的东方世界，修炼者追寻天道，妖兽横行，仙门林立。',
   accent:'#d4a853',accentLight:'#f0d080',accentDark:'#a07830',startLoc:'青云镇',
   intro:'你从昏迷中醒来，发现自己躺在一间简陋的茅屋里。窗外传来喧闹的人声，空气中弥漫着草药的苦涩气息。一位白发老者坐在床边，见你醒来，微微一笑："你终于醒了，从断崖上摔下来还能活命，真是命大。"',
-  promptExtra:'东方玄幻世界。有炼气、筑基、金丹、元婴等修炼境界。有灵石、法器、丹药。NPC用东方风格名字。'
+  promptExtra:'东方玄幻世界。有炼气、筑基、金丹、元婴等修炼境界。NPC用东方风格名字。'
 },{
   id:'shadow',name:'暗影纪元',subtitle:'黑暗奇幻·中世纪',
   desc:'被黑暗侵蚀的大陆，王国腐朽，怪物横行，唯有勇者能带来希望的微光。',
   accent:'#c75b5b',accentLight:'#e87070',accentDark:'#8b3030',startLoc:'灰烬村',
-  intro:'暴雨如注。你跪在泥泞之中，眼前是燃烧的废墟——曾经是你生活了二十年的家园。黑烟裹挟着焦臭味直冲天际。远处传来低沉的号角声，那是黑暗军团集结的信号。你颤抖着握紧手中唯一完好的东西——一把生锈的短剑。',
+  intro:'暴雨如注。你跪在泥泞之中，眼前是燃烧的废墟。远处传来低沉的号角声，那是黑暗军团集结的信号。你颤抖着握紧手中唯一完好的东西——一把生锈的短剑。',
   promptExtra:'黑暗奇幻中世纪。有骑士、法师、牧师等职业。有黑暗魔法、亡灵、恶魔。色调灰暗压抑。'
 },{
   id:'cyber',name:'赛博迷城',subtitle:'赛博朋克·未来都市',
   desc:'2089年，巨型企业掌控一切。霓虹灯下的底层街区，义体改造与数据黑客是生存之道。',
   accent:'#00e5ff',accentLight:'#40ffff',accentDark:'#0090a0',startLoc:'新东京·下层区',
-  intro:'意识回笼的瞬间，你感受到的是后脑勺传来的剧痛。你躺在一张脏兮兮的手术台上，头顶的霓虹灯管闪烁不定。一个机械臂正在缝合你太阳穴上的伤口。"别动，还有三针。"一个沙哑的声音说。你试图回忆发生了什么，但记忆芯片里只剩下一片空白。',
-  promptExtra:'赛博朋克未来世界。有义体改造、神经链接、数据黑客。NPC使用现代语言。科技感十足但底层肮脏。'
+  intro:'意识回笼的瞬间，你感受到的是后脑勺传来的剧痛。你躺在一张脏兮兮的手术台上，头顶的霓虹灯管闪烁不定。一个机械臂正在缝合你太阳穴上的伤口。"别动，还有三针。"一个沙哑的声音说。',
+  promptExtra:'赛博朋克未来世界。有义体改造、神经链接、数据黑客。NPC使用现代语言。'
 }];
 
-const MOODS={
-  '森林':{g:'linear-gradient(180deg,#0a1a0a,#1a3a1a,#0a2a0a)',f:'brightness(0.7) saturate(1.2)'},
-  '沙漠':{g:'linear-gradient(180deg,#3a2a0a,#5a4010,#3a2000)',f:'sepia(0.5) brightness(0.9)'},
-  '雪山':{g:'linear-gradient(180deg,#c8d8e8,#8899aa,#667788)',f:'brightness(1.1) saturate(0.8)'},
-  '海洋':{g:'linear-gradient(180deg,#0a1a3a,#0a2a5a,#0a1a3a)',f:'brightness(0.7) saturate(1.3)'},
-  '河':{g:'linear-gradient(180deg,#0a1a2a,#1a3a4a,#0a2a3a)',f:'brightness(0.7)'},
-  '洞穴':{g:'linear-gradient(180deg,#080808,#1a1a2a,#0a0a1a)',f:'brightness(0.35)'},
-  '城镇':{g:'linear-gradient(180deg,#1a1520,#2a2030,#1a1520)',f:'brightness(0.8)'},
-  '城市':{g:'linear-gradient(180deg,#1a1520,#2a2030,#1a1520)',f:'brightness(0.8)'},
-  '集市':{g:'linear-gradient(180deg,#2a1a0a,#3a2a1a,#2a1a0a)',f:'sepia(0.3) brightness(0.9)'},
-  '宫殿':{g:'linear-gradient(180deg,#1a1020,#2a1530,#1a1020)',f:'brightness(0.9)'},
-  '废墟':{g:'linear-gradient(180deg,#1a1a1a,#2a2020,#1a1a1a)',f:'grayscale(0.5) brightness(0.6)'},
-  '战场':{g:'linear-gradient(180deg,#1a0a0a,#3a1010,#1a0505)',f:'brightness(0.5)'},
-  '夜晚':{f:'brightness(0.3) saturate(0.8)'},
-  '酒吧':{g:'linear-gradient(180deg,#1a1008,#2a1a10,#1a1008)',f:'brightness(0.6) sepia(0.3)'},
-  '霓虹':{g:'linear-gradient(180deg,#0a0a1a,#1a0a2a,#0a1a2a)',f:'brightness(0.7) saturate(1.5)'},
+var MOODS={
+  '森林':{g:'linear-gradient(180deg,#0a1a0a,#1a3a1a)',f:'brightness(0.7)'},
+  '沙漠':{g:'linear-gradient(180deg,#3a2a0a,#5a4010)',f:'sepia(0.5)'},
+  '洞穴':{g:'linear-gradient(180deg,#080808,#1a1a2a)',f:'brightness(0.35)'},
+  '城镇':{g:'linear-gradient(180deg,#1a1520,#2a2030)',f:'brightness(0.8)'},
+  '废墟':{g:'linear-gradient(180deg,#1a1a1a,#2a2020)',f:'brightness(0.6)'},
+  '战场':{g:'linear-gradient(180deg,#1a0a0a,#3a1010)',f:'brightness(0.5)'},
+  '霓虹':{g:'linear-gradient(180deg,#0a0a1a,#1a0a2a)',f:'brightness(0.7) saturate(1.5)'},
 };
 
-// 智谱 API（国内直连，不需要 VPN）
-const DEFAULT_URL='https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const DEFAULT_KEY='a840721ba01a4f389f54d36a71177f3c.HJMM5C4iFFQCAuWt';
-const DEFAULT_MODEL='glm-4-flash';
+var DEF_URL='https://open.bigmodel.cn/api/paas/v4/chat/completions';
+var DEF_KEY='a840721ba01a4f389f54d36a71177f3c.HJMM5C4iFFQCAuWt';
+var DEF_MODEL='glm-4-flash';
 
-let G=null,loading=false,streamBuf='',entryEl=null,selectedWorld=null;
+var G=null,LOADING=false,SBUF='',EEL=null,SELW=null;
 
-function loadCfg(){try{return{apiUrl:DEFAULT_URL,apiKey:DEFAULT_KEY,model:DEFAULT_MODEL,...JSON.parse(localStorage.getItem('mj_cfg')||'{}')}}catch(e){return{apiUrl:DEFAULT_URL,apiKey:DEFAULT_KEY,model:DEFAULT_MODEL}}}
-function saveCfg(c){localStorage.setItem('mj_cfg',JSON.stringify(c))}
+function $i(id){return document.getElementById(id)}
+function loadCfg(){try{return Object.assign({apiUrl:DEF_URL,apiKey:DEF_KEY,model:DEF_MODEL},JSON.parse(localStorage.getItem('mj_c')||'{}'))}catch(e){return{apiUrl:DEF_URL,apiKey:DEF_KEY,model:DEF_MODEL}}}
+function saveCfg(c){localStorage.setItem('mj_c',JSON.stringify(c))}
 
-async function callAI(msgs,onChunk,onDone,onErr){
-  const cfg=loadCfg();
-  const url=cfg.apiUrl||DEFAULT_URL;
-  const key=cfg.apiKey||DEFAULT_KEY;
-  const hd={'Content-Type':'application/json','Authorization':'Bearer '+key};
-  const body=JSON.stringify({model:cfg.model||DEFAULT_MODEL,messages:msgs,temperature:0.85,max_tokens:800,stream:true});
-  try{
-    const r=await fetch(url,{method:'POST',headers:hd,body});
-    if(!r.ok){
-      const errText=await r.text();
-      throw new Error('API错误('+r.status+'): '+errText.substring(0,150));
-    }
-    if(r.body){
-      const reader=r.body.getReader();const dec=new TextDecoder();let buf='';
-      while(true){
-        const{done,value}=await reader.read();if(done)break;
-        buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
-        for(const ln of lines){
-          const t=ln.trim();if(!t||!t.startsWith('data:'))continue;
-          const d=t.slice(5).trim();if(d==='[DONE]'){onDone();return}
-          try{const p=JSON.parse(d);const c=p.choices?.[0]?.delta?.content;if(c)onChunk(c)}catch(e){}
+dbg('脚本加载完成','ok');
+
+/* AI */
+function callAI(msgs,onChunk,onDone,onErr){
+  var cfg=loadCfg();
+  var url=cfg.apiUrl;var key=cfg.apiKey;var model=cfg.model;
+  dbg('调用API: '+url.substring(0,40)+'...','');
+  var body=JSON.stringify({model:model,messages:msgs,temperature:0.85,max_tokens:600,stream:true});
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST',url,true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.setRequestHeader('Authorization','Bearer '+key);
+  xhr.onerror=function(){dbg('网络错误','err');onErr(new Error('网络连接失败，请检查网络'));};
+  xhr.onload=function(){
+    if(xhr.status>=200&&xhr.status<300){
+      dbg('API响应: '+xhr.status,'ok');
+      var ct=xhr.getResponseHeader('content-type')||'';
+      if(ct.indexOf('text/event-stream')>-1||ct.indexOf('text/plain')>-1){
+        var lines=xhr.responseText.split('\n');
+        for(var i=0;i<lines.length;i++){
+          var t=lines[i].trim();
+          if(!t||t.indexOf('data:')!==0)continue;
+          var d=t.substring(5).trim();
+          if(d==='[DONE]')continue;
+          try{var p=JSON.parse(d);var c=p.choices&&p.choices[0]&&p.choices[0].delta&&p.choices[0].delta.content;if(c)onChunk(c)}catch(e){}
         }
+        onDone();
+      }else{
+        try{
+          var d=JSON.parse(xhr.responseText);
+          var c=d.choices&&d.choices[0]&&(d.choices[0].message&&d.choices[0].message.content||d.choices[0].delta&&d.choices[0].delta.content);
+          if(c)onChunk(c);onDone();
+        }catch(e){dbg('解析失败','err');onErr(new Error('响应解析失败'));}
       }
-      onDone();
     }else{
-      const d=await r.json();const c=d.choices?.[0]?.message?.content;if(c)onChunk(c);onDone();
+      dbg('HTTP错误: '+xhr.status,'err');
+      onErr(new Error('API错误 ('+xhr.status+'): '+xhr.responseText.substring(0,100)));
     }
-  }catch(e){
-    try{
-      const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify({model:cfg.model||DEFAULT_MODEL,messages:msgs,temperature:0.85,max_tokens:800,stream:false})});
-      const d=await r.json();const c=d.choices?.[0]?.message?.content;if(c){onChunk(c);onDone();return}
-    }catch(e2){}
-    onErr(e);
-  }
+  };
+  xhr.send(body);
 }
 
-function detectMood(text){for(const kw of Object.keys(MOODS)){if(text.includes(kw))return{keyword:kw,...MOODS[kw]};}return null;}
-function applyScene(location,text){
-  const mood=detectMood(text)||detectMood(location);
-  const bg=$('scene-bg');const atmo=$('scene-atmosphere');
-  if(mood&&mood.g)bg.style.background=mood.g;
-  if(mood&&mood.f)atmo.style.filter=mood.f;else atmo.style.filter='none';
-  $('scene-label').textContent=location||'';
+/* TEST */
+function testConnection(){
+  dbg('测试智谱API...','');
+  var cfg=loadCfg();
+  var body=JSON.stringify({model:cfg.model,messages:[{role:'user',content:'你好，请回复一个字'}],max_tokens:10,stream:false});
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST',cfg.apiUrl,true);
+  xhr.setRequestHeader('Content-Type','application/json');
+  xhr.setRequestHeader('Authorization','Bearer '+cfg.apiKey);
+  xhr.onerror=function(){dbg('测试失败: 网络错误','err');alert('网络连接失败');};
+  xhr.onload=function(){
+    if(xhr.status===200){
+      try{var d=JSON.parse(xhr.responseText);var r=d.choices[0].message.content;dbg('测试成功: '+r,'ok');alert('连接成功！AI回复: '+r)}catch(e){dbg('解析错误','err');alert('连接成功但解析失败');}
+    }else{dbg('测试失败: '+xhr.status,'err');alert('连接失败 ('+xhr.status+')');}
+  };
+  xhr.send(body);
 }
 
+/* MOOD */
+function detectMood(text){for(var kw in MOODS){if(text.indexOf(kw)>-1)return MOODS[kw]}return null}
+function applyScene(loc,text){
+  var mood=detectMood(text)||detectMood(loc)||{};
+  var bg=$i('scene-bg');var atmo=$i('scene-atmosphere');
+  if(mood.g)bg.style.background=mood.g;
+  atmo.style.filter=mood.f||'none';
+  $i('scene-label').textContent=loc||'';
+}
+
+/* PROMPT */
 function buildPrompt(){
-  const w=WORLDS.find(x=>x.id===G.worldId);
-  return`你是「墨境」的文字RPG游戏主持人。用生动的中文讲述故事。
-
-## 世界：${w.name}
-${w.desc}
-${w.promptExtra}
-
-## 规则
-1. 每次回复150-300字
-2. 使用标记（玩家看不到）：
-[HP:+N][HP:-N][MP:+N][MP:-N][EXP:+N][GOLD:+N][GOLD:-N][获得物品:名][失去物品:名][到达地点:名][任务更新:描述][状态效果:名][LEVELUP]
-3. 结尾提供2-4个选项：
-【A】选项
-【B】选项
-4. 经验满时[LEVELUP]，升级公式：等级×100
-
-## 角色
-${G.player.name}|Lv.${G.player.level}|HP:${G.player.hp}/${G.player.maxHp} MP:${G.player.mp}/${G.player.maxMp}|ATK:${G.player.attack} DEF:${G.player.defense}|金币:${G.player.gold}
-背包：${G.player.inventory.length?G.player.inventory.join('、'):'空'}
-位置：${G.location}
-任务：${G.quests.length?G.quests.join('; '):'无'}
-${G.summary?'\n## 剧情摘要\n'+G.summary:''}`;
+  var w=null;for(var i=0;i<WORLDS.length;i++){if(WORLDS[i].id===G.worldId){w=WORLDS[i];break;}}
+  return '你是「墨境」的文字RPG游戏主持人。用生动的中文讲述故事。\n\n## 世界：'+w.name+'\n'+w.desc+'\n'+w.promptExtra+'\n\n## 规则\n1. 每次回复150-300字\n2. 使用标记（玩家看不到）：\n[HP:+N][HP:-N][MP:+N][MP:-N][EXP:+N][GOLD:+N][GOLD:-N][获得物品:名][失去物品:名][到达地点:名][任务更新:描述][LEVELUP]\n3. 结尾提供2-4个选项：\n【A】选项\n【B】选项\n4. 经验满时[LEVELUP]\n\n## 角色\n'+G.player.name+'|Lv.'+G.player.level+'|HP:'+G.player.hp+'/'+G.player.maxHp+' MP:'+G.player.mp+'/'+G.player.maxMp+'|ATK:'+G.player.attack+' DEF:'+G.player.defense+'|金币:'+G.player.gold+'\n背包：'+(G.player.inventory.length?G.player.inventory.join('、'):'空')+'\n位置：'+G.location+'\n任务：'+(G.quests.length?G.quests.join('; '):'无')+(G.summary?'\n\n## 剧情摘要\n'+G.summary:'');
 }
-function buildMsgs(input){return[{role:'system',content:buildPrompt()},...G.recent.slice(-12),{role:'user',content:input}];}
+function buildMsgs(input){return[{role:'system',content:buildPrompt()}].concat(G.recent.slice(-12)).concat([{role:'user',content:input}])}
 
-function parseBuffer(text){
-  let safe=text.length;const lo=text.lastIndexOf('[');
-  if(lo>-1&&text.indexOf(']',lo)===-1)safe=lo;
-  const safeText=text.substring(0,safe);const evts=[];
-  const clean=safeText.replace(/$$([^$$]+)\]/g,(m,inner)=>{
-    const pats=[/^(HP|MP|EXP|GOLD)[：:]([+-]?\d+)$/,/^(获得物品|失去物品|到达地点|任务更新|状态效果)[：:](.+)$/,/^(LEVELUP)$/];
-    for(const p of pats){const mm=inner.match(p);if(mm){evts.push({type:mm[1],val:mm[2]||true});return''}}
-    return m;
-  });
-  return{clean:clean.trim(),evts};
-}
+/* PARSER */
 function parseComplete(text){
-  const evts=[];
-  let clean=text.replace(/$$([^$$]+)\]/g,(m,inner)=>{
-    const pats=[/^(HP|MP|EXP|GOLD)[：:]([+-]?\d+)$/,/^(获得物品|失去物品|到达地点|任务更新|状态效果)[：:](.+)$/,/^(LEVELUP)$/];
-    for(const p of pats){const mm=inner.match(p);if(mm){evts.push({type:mm[1],val:mm[2]||true});return''}}
+  var evts=[];
+  var clean=text.replace(/$$([^$$]+)\]/g,function(m,inner){
+    var p1=inner.match(/^(HP|MP|EXP|GOLD)[：:]([+-]?\d+)$/);
+    if(p1){evts.push({type:p1[1],val:p2[2]});return''}
+    var p2=inner.match(/^(获得物品|失去物品|到达地点|任务更新|状态效果)[：:](.+)$/);
+    if(p2){evts.push({type:p2[1],val:p2[2]});return''}
+    if(inner==='LEVELUP'){evts.push({type:'LEVELUP',val:true});return''}
     return m;
   });
-  const opts=[];const re=/【([A-D])】\s*([^【]+)/g;let m;
+  var opts=[];var re=/【([A-D])】\s*([^【]+)/g;var m;
   while((m=re.exec(clean))!==null)opts.push({l:m[1],t:m[2].trim()});
   clean=clean.replace(/【[A-D]】[^【]*/g,'').trim();
-  return{clean,evts,opts};
+  return{clean:clean,evts:evts,opts:opts};
 }
 
+/* GAME LOGIC */
 function newGame(wid,name){
-  G={worldId:wid,player:{name,level:1,hp:100,maxHp:100,mp:50,maxMp:50,attack:10,defense:5,exp:0,gold:20,inventory:[]},
-    location:WORLDS.find(w=>w.id===wid).startLoc,quests:[],summary:'',recent:[],allMsgs:[],turn:0};
+  G={worldId:wid,player:{name:name,level:1,hp:100,maxHp:100,mp:50,maxMp:50,attack:10,defense:5,exp:0,gold:20,inventory:[]},
+    location:'',quests:[],summary:'',recent:[],allMsgs:[],turn:0};
+  for(var i=0;i<WORLDS.length;i++){if(WORLDS[i].id===wid){G.location=WORLDS[i].startLoc;break;}}
 }
 function applyEvts(evts){
-  const p=G.player;
-  for(const e of evts){
-    const v=parseInt(e.val);
-    switch(e.type){
-      case'HP':p.hp=Math.max(0,Math.min(p.maxHp,p.hp+v));if(p.hp<=0){addSys('你倒下了…HP恢复至1');p.hp=1}break;
-      case'MP':p.mp=Math.max(0,Math.min(p.maxMp,p.mp+v));break;
-      case'EXP':p.exp+=v;break;
-      case'GOLD':p.gold=Math.max(0,p.gold+v);break;
-      case'获得物品':if(!p.inventory.includes(e.val)){p.inventory.push(e.val);notify('获得：'+e.val,'success')}break;
-      case'失去物品':{const i=p.inventory.indexOf(e.val);if(i>-1){p.inventory.splice(i,1);}}break;
-      case'到达地点':G.location=e.val;$('g-location').textContent=e.val;notify('到达：'+e.val,'success');applyScene(e.val,e.val);break;
-      case'任务更新':if(!G.quests.includes(e.val)){G.quests.push(e.val);notify('任务：'+e.val,'success')}break;
-      case'LEVELUP':levelUp();break;
-    }
+  var p=G.player;
+  for(var i=0;i<evts.length;i++){
+    var e=evts[i];var v=parseInt(e.val);
+    if(e.type==='HP'){p.hp=Math.max(0,Math.min(p.maxHp,p.hp+v));if(p.hp<=0){addSys('你倒下了…HP恢复至1');p.hp=1}}
+    else if(e.type==='MP'){p.mp=Math.max(0,Math.min(p.maxMp,p.mp+v))}
+    else if(e.type==='EXP'){p.exp+=v}
+    else if(e.type==='GOLD'){p.gold=Math.max(0,p.gold+v)}
+    else if(e.type==='获得物品'){if(p.inventory.indexOf(e.val)<0){p.inventory.push(e.val);notify('获得：'+e.val,'success')}}
+    else if(e.type==='失去物品'){var idx=p.inventory.indexOf(e.val);if(idx>-1)p.inventory.splice(idx,1)}
+    else if(e.type==='到达地点'){G.location=e.val;$i('g-location').textContent=e.val;notify('到达：'+e.val,'success');applyScene(e.val,e.val)}
+    else if(e.type==='任务更新'){if(G.quests.indexOf(e.val)<0){G.quests.push(e.val);notify('任务：'+e.val,'success')}}
+    else if(e.type==='LEVELUP'){levelUp()}
   }
   if(p.exp>=p.level*100)levelUp();
   renderStats();
 }
 function levelUp(){
-  const p=G.player;p.level++;p.exp-=(p.level-1)*100;if(p.exp<0)p.exp=0;
+  var p=G.player;p.level++;p.exp-=(p.level-1)*100;if(p.exp<0)p.exp=0;
   p.maxHp+=15;p.hp=p.maxHp;p.maxMp+=10;p.mp=p.maxMp;p.attack+=3;p.defense+=2;
   notify('升级！Lv.'+p.level,'success');addSys('✦ 升级！达到 Lv.'+p.level);
 }
 
-function $(id){return document.getElementById(id)}
-function showScreen(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$('screen-'+s).classList.add('active')}
+/* UI */
+function showScreen(s){var all=document.querySelectorAll('.screen');for(var i=0;i<all.length;i++)all[i].classList.remove('active');$i('screen-'+s).classList.add('active')}
 function renderStats(){
-  const p=G.player;
-  $('hp-bar').style.width=(p.hp/p.maxHp*100)+'%';$('mp-bar').style.width=(p.mp/p.maxMp*100)+'%';
-  $('hp-val').textContent=p.hp+'/'+p.maxHp;$('mp-val').textContent=p.mp+'/'+p.maxMp;
-  $('s-lv').textContent=p.level;$('s-atk').textContent=p.attack;$('s-def').textContent=p.defense;
-  $('s-exp').textContent=p.exp+'/'+p.level*100;$('s-gold').textContent=p.gold;$('g-location').textContent=G.location;
-  $('inv-list').innerHTML=p.inventory.length?p.inventory.map(i=>`<div class="inv-item">${esc(i)}</div>`).join(''):'<div class="empty-hint">空空如也</div>';
-  $('quest-list').innerHTML=G.quests.length?G.quests.map(q=>`<div class="quest-item">${esc(q)}</div>`).join(''):'<div class="empty-hint">暂无任务</div>';
+  var p=G.player;
+  $i('hp-bar').style.width=(p.hp/p.maxHp*100)+'%';$i('mp-bar').style.width=(p.mp/p.maxMp*100)+'%';
+  $i('hp-val').textContent=p.hp+'/'+p.maxHp;$i('mp-val').textContent=p.mp+'/'+p.maxMp;
+  $i('s-lv').textContent=p.level;$i('s-atk').textContent=p.attack;$i('s-def').textContent=p.defense;
+  $i('s-exp').textContent=p.exp+'/'+p.level*100;$i('s-gold').textContent=p.gold;$i('g-location').textContent=G.location;
+  $i('inv-list').innerHTML=p.inventory.length?(function(){var h='';for(var i=0;i<p.inventory.length;i++)h+='<div class="inv-item">'+esc(p.inventory[i])+'</div>';return h})():'<div class="empty-hint">空空如也</div>';
+  $i('quest-list').innerHTML=G.quests.length?(function(){var h='';for(var i=0;i<G.quests.length;i++)h+='<div class="quest-item">'+esc(G.quests[i])+'</div>';return h})():'<div class="empty-hint">暂无任务</div>';
 }
-function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function esc(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function fmtText(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>')}
-function addEntry(text,cls){const c=$('narr-content');const d=document.createElement('div');d.className='narr-entry '+(cls||'');d.innerHTML=fmtText(text);c.appendChild(d);$('narr-area').scrollTop=$('narr-area').scrollHeight;return d;}
+function addEntry(text,cls){var c=$i('narr-content');var d=document.createElement('div');d.className='narr-entry '+(cls||'');d.innerHTML=fmtText(text);c.appendChild(d);$i('narr-area').scrollTop=$i('narr-area').scrollHeight;return d}
 function addSys(t){addEntry(t,'system')}
-function updateEntry(el,text){el.innerHTML=fmtText(text);$('narr-area').scrollTop=$('narr-area').scrollHeight}
-function showThinking(){const c=$('narr-content');const d=document.createElement('div');d.className='thinking';d.id='thinking-ind';d.innerHTML='<span></span><span></span><span></span>';c.appendChild(d);$('narr-area').scrollTop=$('narr-area').scrollHeight;}
-function hideThinking(){$('thinking-ind')?.remove()}
-function showChoices(opts){const area=$('choices-area');area.innerHTML='';opts.forEach((o,i)=>{const b=document.createElement('button');b.className='choice-btn';b.innerHTML=`<span class="choice-letter">${o.l}</span>${esc(o.t)}`;b.style.opacity='0';b.style.transform='translateX(-10px)';b.addEventListener('click',()=>doAction(`[${o.l}] ${o.t}`));area.appendChild(b);setTimeout(()=>{b.style.transition='all .3s ease';b.style.opacity='1';b.style.transform='translateX(0)'},i*80);});}
-function clearChoices(){$('choices-area').innerHTML=''}
-function setLoad(v){loading=v;$('btn-send').disabled=v;$('action-input').disabled=v;if(v){clearChoices();showThinking()}else{hideThinking();$('action-input').focus()}}
-function notify(text,type='info'){let w=$('notif-wrap');if(!w){w=document.createElement('div');w.id='notif-wrap';w.className='notif-wrap';document.body.appendChild(w)}const n=document.createElement('div');n.className='notif notif-'+type;n.textContent=text;w.appendChild(n);requestAnimationFrame(()=>requestAnimationFrame(()=>n.classList.add('show')));setTimeout(()=>{n.classList.remove('show');setTimeout(()=>n.remove(),400)},3000);}
-function openModal(id){$(id).classList.add('active')}
-function closeModal(id){$(id).classList.remove('active')}
+function updateEntry(el,text){el.innerHTML=fmtText(text);$i('narr-area').scrollTop=$i('narr-area').scrollHeight}
+function showThinking(){var c=$i('narr-content');var d=document.createElement('div');d.className='thinking';d.id='thinking-ind';d.innerHTML='<span></span><span></span><span></span>';c.appendChild(d);$i('narr-area').scrollTop=$i('narr-area').scrollHeight}
+function hideThinking(){var el=$i('thinking-ind');if(el)el.remove()}
+function showChoices(opts){
+  var area=$i('choices-area');area.innerHTML='';
+  for(var i=0;i<opts.length;i++){
+    (function(o,idx){
+      var b=document.createElement('button');b.className='choice-btn';
+      b.innerHTML='<span class="choice-letter">'+o.l+'</span>'+esc(o.t);
+      b.style.opacity='0';b.style.transform='translateX(-10px)';
+      b.addEventListener('click',function(){doAction('['+o.l+'] '+o.t)});
+      area.appendChild(b);
+      setTimeout(function(){b.style.transition='all .3s ease';b.style.opacity='1';b.style.transform='translateX(0)'},idx*80);
+    })(opts[i],i);
+  }
+}
+function clearChoices(){$i('choices-area').innerHTML=''}
+function setLoad(v){LOADING=v;$i('btn-send').disabled=v;$i('action-input').disabled=v;if(v){clearChoices();showThinking()}else{hideThinking();$i('action-input').focus()}}
+function notify(text,type){var w=$i('notif-wrap');if(!w){w=document.createElement('div');w.id='notif-wrap';w.className='notif-wrap';document.body.appendChild(w)}var n=document.createElement('div');n.className='notif notif-'+(type||'info');n.textContent=text;w.appendChild(n);setTimeout(function(){n.classList.add('show')},10);setTimeout(function(){n.classList.remove('show');setTimeout(function(){n.remove()},400)},3000)}
+function openModal(id){$i(id).classList.add('active')}
+function closeModal(id){$i(id).classList.remove('active')}
 
-async function doAction(text){
-  if(loading||!G)return;
+/* GAME LOOP */
+function doAction(text){
+  if(LOADING||!G)return;
   addEntry(text,'player-action');
   G.recent.push({role:'user',content:text});G.allMsgs.push({role:'user',content:text});
-  setLoad(true);streamBuf='';entryEl=null;
-  await callAI(buildMsgs(text),
-    chunk=>{streamBuf+=chunk;const{clean}=parseBuffer(streamBuf);if(!entryEl&&clean.length>0){hideThinking();entryEl=addEntry('','')}if(entryEl)updateEntry(entryEl,clean);},
-    ()=>{hideThinking();const{clean,evts,opts}=parseComplete(streamBuf);if(entryEl)updateEntry(entryEl,clean);else if(clean)addEntry(clean);applyEvts(evts);if(opts.length)showChoices(opts);G.recent.push({role:'assistant',content:streamBuf});G.allMsgs.push({role:'assistant',content:streamBuf});G.turn++;if(G.turn%8===0)maybeSummary();setLoad(false);},
-    err=>{hideThinking();addSys('⚠ '+err.message);setLoad(false)}
+  setLoad(true);SBUF='';EEL=null;
+  dbg('发送消息...','');
+  callAI(buildMsgs(text),
+    function(chunk){
+      SBUF+=chunk;
+      if(!EEL&&SBUF.length>5){hideThinking();EEL=addEntry('','')}
+      if(EEL)updateEntry(EEL,SBUF);
+    },
+    function(){
+      hideThinking();
+      var result=parseComplete(SBUF);
+      if(EEL)updateEntry(EEL,result.clean);else if(result.clean)addEntry(result.clean);
+      applyEvts(result.evts);
+      if(result.opts.length)showChoices(result.opts);
+      G.recent.push({role:'assistant',content:SBUF});G.allMsgs.push({role:'assistant',content:SBUF});
+      G.turn++;setLoad(false);
+      dbg('完成，第'+G.turn+'轮','ok');
+    },
+    function(err){
+      hideThinking();
+      addSys('⚠ '+err.message);
+      setLoad(false);
+      dbg('失败: '+err.message,'err');
+    }
   );
 }
-async function maybeSummary(){const sm=[{role:'system',content:'将以下RPG对话总结为100字以内的剧情摘要。'},...G.allMsgs.slice(-20),{role:'user',content:'请总结剧情。'}];let s='';try{await callAI(sm,c=>{s+=c},()=>{G.summary=s;if(G.allMsgs.length>30)G.allMsgs=G.allMsgs.slice(-10)},()=>{})}catch(e){}}
 
-function init(){
-  const wc=$('world-cards');
-  WORLDS.forEach(w=>{const c=document.createElement('div');c.className='world-card';c.style.setProperty('--card-accent',w.accent);c.innerHTML=`<div class="world-card-name" style="color:${w.accent}">${w.name}</div><div class="world-card-sub">${w.subtitle}</div><div class="world-card-desc">${w.desc}</div>`;c.addEventListener('click',()=>{document.querySelectorAll('.world-card').forEach(x=>x.classList.remove('selected'));c.classList.add('selected');selectedWorld=w.id;$('char-setup').style.display='flex';$('char-name').focus()});wc.appendChild(c);});
-  $('btn-start').addEventListener('click',startGame);
-  $('char-name').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
-  $('action-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAction()}});
-  $('btn-send').addEventListener('click',sendAction);
-  $('btn-toggle-sidebar').addEventListener('click',()=>{$('game-sidebar').classList.toggle('open')});
-  $('btn-settings-title').addEventListener('click',()=>{populateSettings();openModal('modal-settings')});
-  $('btn-settings-game').addEventListener('click',()=>{populateSettings();openModal('modal-settings')});
-  $('settings-form').addEventListener('submit',e=>{e.preventDefault();doSaveSettings()});
+function sendAction(){var inp=$i('action-input');var t=inp.value.trim();if(!t||LOADING)return;inp.value='';doAction(t)}
+
+function populateSettings(){var c=loadCfg();$i('set-apiurl').value=c.apiUrl||'';$i('set-apikey').value=c.apiKey||'';$i('set-model').value=c.model||''}
+function doSaveSettings(){
+  var cfg={apiUrl:$i('set-apiurl').value.trim()||DEF_URL,apiKey:$i('set-apikey').value.trim()||DEF_KEY,model:$i('set-model').value.trim()||DEF_MODEL};
+  saveCfg(cfg);closeModal('modal-settings');notify('设置已保存','success');
+  dbg('设置已保存','ok');
 }
 
 function startGame(){
-  if(!selectedWorld){notify('请先选择一个世界','error');return}
-  const name=$('char-name').value.trim()||'旅人';
-  newGame(selectedWorld,name);
-  const w=WORLDS.find(x=>x.id===selectedWorld);
+  if(!SELW){notify('请先选择一个世界','error');return}
+  var name=$i('char-name').value.trim()||'旅人';
+  newGame(SELW,name);
+  var w=null;for(var i=0;i<WORLDS.length;i++){if(WORLDS[i].id===SELW){w=WORLDS[i];break;}}
   document.documentElement.style.setProperty('--accent',w.accent);
   document.documentElement.style.setProperty('--accent-light',w.accentLight);
   document.documentElement.style.setProperty('--accent-dark',w.accentDark);
   applyScene(w.startLoc,w.mood);
   showScreen('game');renderStats();addEntry(w.intro);
+  dbg('游戏开始: '+w.name,'ok');
   doAction('【游戏开始】请描述我当前的处境和周围环境，然后给我几个行动选项。');
 }
-function sendAction(){const inp=$('action-input');const t=inp.value.trim();if(!t||loading)return;inp.value='';doAction(t);}
 
-function populateSettings(){const c=loadCfg();$('set-apiurl').value=c.apiUrl||'';$('set-apikey').value=c.apiKey||'';$('set-model').value=c.model||'';}
-function doSaveSettings(){
-  const cfg={apiUrl:$('set-apiurl').value.trim()||DEFAULT_URL,apiKey:$('set-apikey').value.trim()||DEFAULT_KEY,model:$('set-model').value.trim()||DEFAULT_MODEL};
-  saveCfg(cfg);closeModal('modal-settings');notify('设置已保存','success');
+/* INIT */
+function init(){
+  dbg('初始化...','');
+  var wc=$i('world-cards');
+  for(var i=0;i<WORLDS.length;i++){
+    (function(w){
+      var c=document.createElement('div');c.className='world-card';c.style.setProperty('--card-accent',w.accent);
+      c.innerHTML='<div class="world-card-name" style="color:'+w.accent+'">'+w.name+'</div><div class="world-card-sub">'+w.subtitle+'</div><div class="world-card-desc">'+w.desc+'</div>';
+      c.addEventListener('click',function(){
+        var all=document.querySelectorAll('.world-card');for(var j=0;j<all.length;j++)all[j].classList.remove('selected');
+        c.classList.add('selected');SELW=w.id;$i('char-setup').style.display='flex';$i('char-name').focus();
+      });
+      wc.appendChild(c);
+    })(WORLDS[i]);
+  }
+  $i('btn-start').addEventListener('click',startGame);
+  $i('char-name').addEventListener('keydown',function(e){if(e.key==='Enter')startGame()});
+  $i('action-input').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAction()}});
+  $i('btn-send').addEventListener('click',sendAction);
+  $i('btn-toggle-sidebar').addEventListener('click',function(){$i('game-sidebar').classList.toggle('open')});
+  $i('btn-settings-title').addEventListener('click',function(){populateSettings();openModal('modal-settings')});
+  $i('btn-settings-game').addEventListener('click',function(){populateSettings();openModal('modal-settings')});
+  $i('settings-form').addEventListener('submit',function(e){e.preventDefault();doSaveSettings()});
+  $i('btn-test').addEventListener('click',testConnection);
+  dbg('初始化完成 ✅','ok');
 }
 
 document.addEventListener('DOMContentLoaded',init);

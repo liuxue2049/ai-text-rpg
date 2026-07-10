@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>墨境 — AI 文字 RPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Noto+Serif+SC:wght@300;400;600;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep:#080a12;--bg:#0c0f1a;--surface:#131729;--surface-2:#1a1f36;--surface-3:#232848;
+  --border:#2a3055;--border-light:#3a4270;
+  --accent:#d4a853;--accent-light:#f0d080;--accent-dark:#a07830;
+  --red:#c75b5b;--red-light:#e87070;--green:#5bc77b;--green-light:#70e890;
+  --blue:#5b8bc7;--purple:#8b6bc7;--cyan:#5bc7c7;
+  --text:#e8e2d4;--text-2:#b0b0c0;--text-muted:#606080;
+  --font-display:'Cinzel',serif;--font-body:'Noto Serif SC',serif;--font-mono:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{font-size:16px;scroll-behavior:smooth;}
+body{font-family:var(--font-body);background:var(--bg-deep);color:var(--text);min-height:100vh;overflow-x:hidden;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.screen{display:none;min-height:100vh;}.screen.active{display:flex;}
+
+#screen-title{
+  flex-direction:column;align-items:center;justify-content:center;
+  position:relative;
+  background:radial-gradient(ellipse at 30% 40%,rgba(212,168,83,.06)0%,transparent 60%),
+             radial-gradient(ellipse at 70% 70%,rgba(139,107,199,.04)0%,transparent 50%),var(--bg-deep);
+}
+#screen-title::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(212,168,83,.12)1px,transparent 1px);
+  background-size:40px 40px;animation:driftParticles 20s linear infinite;opacity:.6;
+}
+@keyframes driftParticles{from{transform:translate(0,0)}to{transform:translate(-40px,-40px)}}
+.title-content{position:relative;z-index:1;text-align:center;padding:20px;max-width:700px;width:100%;}
+.title-logo{
+  font-family:var(--font-display);font-size:clamp(3.5rem,10vw,7rem);font-weight:900;
+  background:linear-gradient(180deg,#f0d080,#d4a853 40%,#a07830);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:.12em;animation:titlePulse 4s ease-in-out infinite alternate;
+  filter:drop-shadow(0 0 40px rgba(212,168,83,.25));
+}
+@keyframes titlePulse{0%{filter:brightness(1) drop-shadow(0 0 40px rgba(212,168,83,.2))}100%{filter:brightness(1.15) drop-shadow(0 0 60px rgba(212,168,83,.35))}}
+.title-sub{color:var(--text-2);font-size:1rem;margin-top:4px;letter-spacing:.3em;font-weight:300;}
+.title-divider{width:180px;height:1px;background:linear-gradient(90deg,transparent,var(--accent-dark),transparent);margin:28px auto;position:relative;}
+.title-divider::before{content:'◆';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--accent-dark);font-size:8px;background:var(--bg-deep);padding:0 10px;}
+
+.world-cards{display:flex;gap:16px;margin:0 auto 28px;max-width:680px;flex-wrap:wrap;justify-content:center;}
+.world-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:20px 20px 16px;cursor:pointer;transition:all .3s ease;position:relative;
+  overflow:hidden;flex:1;min-width:180px;max-width:220px;text-align:left;
+}
+.world-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent-dark));}
+.world-card:hover{border-color:var(--card-accent,var(--accent-dark));transform:translateY(-4px);box-shadow:0 12px 35px rgba(0,0,0,.4);}
+.world-card.selected{border-color:var(--card-accent,var(--accent));background:var(--surface-2);}
+.world-card.selected::after{
+  content:'✓';position:absolute;top:10px;right:10px;width:22px;height:22px;
+  background:var(--card-accent,var(--accent));color:var(--bg-deep);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+}
+.world-card-name{font-size:1.1rem;font-weight:700;margin-bottom:2px;}
+.world-card-sub{font-size:.72rem;color:var(--text-muted);margin-bottom:8px;font-family:var(--font-mono);}
+.world-card-desc{font-size:.78rem;color:var(--text-2);line-height:1.6;}
+
+.char-setup{display:none;flex-direction:column;align-items:center;gap:14px;margin-bottom:20px;animation:fadeUp .4s ease;}
+.char-setup label{font-size:.85rem;color:var(--text-2);}
+.char-setup input{
+  width:240px;padding:12px 18px;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:.95rem;
+  text-align:center;outline:none;transition:border-color .3s;
+}
+.char-setup input:focus{border-color:var(--accent-dark);}
+.btn-primary{
+  padding:12px 36px;background:linear-gradient(135deg,var(--accent-dark),var(--accent));
+  border:none;border-radius:8px;color:var(--bg-deep);font-family:var(--font-body);
+  font-size:.95rem;font-weight:600;cursor:pointer;transition:all .3s;letter-spacing:.05em;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(212,168,83,.3);}
+.btn-ghost{
+  background:none;border:1px solid var(--border);border-radius:8px;padding:10px 24px;
+  color:var(--text-muted);font-family:var(--font-body);font-size:.85rem;cursor:pointer;
+  transition:all .3s;
+}
+.btn-ghost:hover{border-color:var(--text-muted);color:var(--text-2);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+#screen-game{flex-direction:column;height:100vh;}
+.game-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface);
+  flex-shrink:0;
+}
+.game-logo-sm{font-family:var(--font-display);font-size:1.1rem;color:var(--accent);font-weight:700;letter-spacing:.08em;}
+.game-location{font-size:.82rem;color:var(--text-muted);margin-left:16px;padding-left:16px;border-left:1px solid var(--border);}
+.hdr-actions{display:flex;gap:6px;}
+.btn-icon{
+  width:36px;height:36px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-2);cursor:pointer;font-size:.9rem;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.btn-icon:hover{border-color:var(--accent-dark);color:var(--accent);}
+.game-body{display:flex;flex:1;overflow:hidden;}
+
+.game-sidebar{
+  width:250px;flex-shrink:0;padding:20px 16px;overflow-y:auto;
+  border-right:1px solid var(--border);background:var(--surface);
+}
+.sec-label{
+  font-family:var(--font-mono);font-size:.65rem;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--accent-dark);margin-bottom:10px;
+  padding-bottom:6px;border-bottom:1px solid var(--border);
+}
+.stat-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.stat-lbl{font-family:var(--font-mono);font-size:.7rem;color:var(--text-muted);width:24px;text-align:right;}
+.stat-bar{flex:1;height:7px;background:var(--surface-3);border-radius:4px;overflow:hidden;}
+.stat-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+.fill-hp{background:linear-gradient(90deg,#6b2020,var(--red),var(--red-light));}
+.fill-mp{background:linear-gradient(90deg,#1a3060,var(--blue),#70a8e8);}
+.stat-val{font-family:var(--font-mono);font-size:.7rem;color:var(--text-2);width:55px;text-align:right;transition:color .3s,transform .3s;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin:14px 0 20px;}
+.stat-item{display:flex;justify-content:space-between;padding:4px 0;}
+.stat-key{font-size:.72rem;color:var(--text-muted);}
+.stat-num{font-family:var(--font-mono);font-size:.78rem;color:var(--text);}
+.inv-list,.quest-list{display:flex;flex-direction:column;gap:4px;}
+.inv-item,.quest-item{
+  font-size:.78rem;color:var(--text-2);padding:6px 10px;
+  background:var(--surface-2);border-radius:6px;border-left:2px solid var(--accent-dark);
+}
+.quest-item{border-left-color:var(--purple);}
+.empty-hint{font-size:.75rem;color:var(--text-muted);font-style:italic;}
+
+.game-main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.narrative-area{flex:1;overflow-y:auto;padding:28px 32px;}
+.narr-entry{margin-bottom:20px;line-height:2;font-size:.95rem;animation:fadeUp .4s ease;}
+.narr-entry.player-action{
+  color:var(--accent);font-size:.85rem;padding:8px 16px;
+  background:rgba(212,168,83,.06);border-left:2px solid var(--accent-dark);
+  border-radius:0 6px 6px 0;margin-bottom:16px;
+}
+.narr-entry.system{
+  color:var(--text-muted);font-size:.8rem;text-align:center;
+  font-family:var(--font-mono);padding:8px 0;border-top:1px dashed var(--border);
+}
+.thinking{display:flex;gap:5px;padding:12px 0;justify-content:center;}
+.thinking span{
+  width:6px;height:6px;background:var(--accent-dark);border-radius:50%;
+  animation:thinkBounce 1.2s ease-in-out infinite;
+}
+.thinking span:nth-child(2){animation-delay:.15s;}.thinking span:nth-child(3){animation-delay:.3s;}
+@keyframes thinkBounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+
+.choices-area{padding:0 32px 12px;display:flex;flex-direction:column;gap:6px;}
+.choice-btn{
+  display:flex;align-items:center;gap:12px;width:100%;padding:12px 18px;
+  background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--accent-dark);
+  border-radius:0 8px 8px 0;color:var(--text);font-family:var(--font-body);
+  font-size:.88rem;text-align:left;cursor:pointer;transition:all .25s;
+}
+.choice-btn:hover{background:var(--surface-3);border-left-color:var(--accent);transform:translateX(4px);box-shadow:0 4px 18px rgba(0,0,0,.25);}
+.choice-letter{
+  width:26px;height:26px;line-height:26px;text-align:center;
+  background:var(--accent-dark);color:var(--bg-deep);border-radius:4px;
+  font-weight:700;font-size:.75rem;flex-shrink:0;transition:background .2s;
+}
+.choice-btn:hover .choice-letter{background:var(--accent);}
+
+.input-area{
+  display:flex;gap:8px;padding:16px 32px 20px;
+  border-top:1px solid var(--border);background:var(--bg);
+}
+.input-area input{
+  flex:1;padding:12px 18px;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:.9rem;
+  outline:none;transition:border-color .3s;
+}
+.input-area input:focus{border-color:var(--accent-dark);}
+.input-area input::placeholder{color:var(--text-muted);}
+.btn-send{
+  width:44px;height:44px;background:var(--accent-dark);border:none;border-radius:8px;
+  color:var(--bg-deep);font-size:1.1rem;cursor:pointer;transition:all .2s;flex-shrink:0;
+}
+.btn-send:hover{background:var(--accent);transform:scale(1.05);}
+.btn-send:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(8,10,18,.88);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;z-index:1000;
+}
+.modal-overlay.active{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:28px;max-width:480px;width:92%;max-height:85vh;overflow-y:auto;
+  animation:modalIn .3s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-head h2{font-size:1.1rem;font-weight:600;}
+.modal-close{
+  width:30px;height:30px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:1.1rem;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:.78rem;color:var(--text-2);margin-bottom:6px;font-family:var(--font-mono);}
+.form-group input,.form-group select{
+  width:100%;padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:.88rem;outline:none;
+}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent-dark);}
+.form-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%23606080'%3E%3Cpath d='M5 7L0 2h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.form-hint{font-size:.72rem;color:var(--text-muted);margin-top:4px;line-height:1.5;}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;}
+
+.save-slots{display:flex;flex-direction:column;gap:8px;}
+.save-slot{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;background:var(--surface-2);border:1px solid var(--border);
+  border-radius:8px;transition:border-color .2s;
+}
+.save-slot:hover{border-color:var(--accent-dark);}
+.save-slot-label{font-size:.8rem;font-weight:600;color:var(--text);}
+.save-slot-preview{font-size:.75rem;color:var(--text-muted);margin:2px 0;}
+.save-slot-time{font-size:.68rem;color:var(--text-muted);font-family:var(--font-mono);}
+.save-slot-empty{color:var(--text-muted);font-size:.82rem;text-align:center;padding:8px;}
+.save-slot-btns{display:flex;gap:6px;}
+.btn-sm{
+  padding:5px 14px;border:1px solid var(--border);border-radius:5px;
+  background:transparent;color:var(--text-2);font-size:.75rem;cursor:pointer;
+  font-family:var(--font-body);transition:all .2s;
+}
+.btn-sm:hover{border-color:var(--accent-dark);color:var(--accent);}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red);}
+
+.notif-wrap{position:fixed;top:16px;right:16px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.notif{
+  padding:10px 18px;background:var(--surface-2);border:1px solid var(--border);
+  border-left:3px solid var(--text-muted);border-radius:0 8px 8px 0;
+  font-size:.82rem;color:var(--text);opacity:0;transform:translateX(80px);
+  transition:all .35s ease;max-width:280px;pointer-events:auto;
+}
+.notif.show{opacity:1;transform:translateX(0);}
+.notif-item{border-left-color:var(--accent);}
+.notif-quest{border-left-color:var(--purple);}
+.notif-location{border-left-color:var(--cyan);}
+.notif-levelup{border-left-color:var(--accent);background:rgba(212,168,83,.1);}
+.notif-error{border-left-color:var(--red);}
+.notif-success{border-left-color:var(--green);}
+
+@media(max-width:768px){
+  .game-body{flex-direction:column;}
+  .game-sidebar{
+    width:100%;max-height:0;overflow:hidden;padding:0;
+    border-right:none;border-bottom:1px solid var(--border);
+    transition:max-height .3s ease,padding .3s ease;
+  }
+  .game-sidebar.open{max-height:500px;padding:16px;overflow-y:auto;}
+  .narrative-area{padding:20px 16px;}
+  .choices-area{padding:0 16px 8px;}
+  .input-area{padding:12px 16px;}
+  .world-cards{flex-direction:column;align-items:center;}
+  .world-card{max-width:100%;}
+}
+</style>
+</head>
+<body>
+
+<div id="screen-title" class="screen active">
+  <div class="title-content">
+    <h1 class="title-logo">墨境</h1>
+    <p class="title-sub">AI 文字角色扮演</p>
+    <div class="title-divider"></div>
+    <div class="world-cards" id="world-cards"></div>
+    <div class="char-setup" id="char-setup">
+      <label>为你的角色取一个名字</label>
+      <input type="text" id="char-name" placeholder="输入角色名..." maxlength="10" autocomplete="off">
+      <button class="btn-primary" id="btn-start">开始冒险</button>
+    </div>
+    <div style="margin-top:20px">
+      <button class="btn-ghost" id="btn-load-title">读取存档</button>
+      <button class="btn-ghost" id="btn-settings-title" style="margin-left:8px">⚙ 设置</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <div style="display:flex;align-items:center;">
+      <span class="game-logo-sm">墨境</span>
+      <span class="game-location" id="g-location">—</span>
+    </div>
+    <div class="hdr-actions">
+      <button class="btn-icon" id="btn-toggle-sidebar" title="角色面板">☰</button>
+      <button class="btn-icon" id="btn-save-game" title="存档">💾</button>
+      <button class="btn-icon" id="btn-settings-game" title="设置">⚙</button>
+    </div>
+  </div>
+  <div class="game-body">
+    <aside class="game-sidebar" id="game-sidebar">
+      <div style="margin-bottom:20px;">
+        <div class="sec-label">角色状态</div>
+        <div class="stat-row"><span class="stat-lbl">HP</span><div class="stat-bar"><div class="stat-fill fill-hp" id="hp-bar" style="width:100%"></div></div><span class="stat-val" id="hp-val">100/100</span></div>
+        <div class="stat-row"><span class="stat-lbl">MP</span><div class="stat-bar"><div class="stat-fill fill-mp" id="mp-bar" style="width:100%"></div></div><span class="stat-val" id="mp-val">50/50</span></div>
+        <div class="stat-grid">
+          <div class="stat-item"><span class="stat-key">等级</span><span class="stat-num" id="s-lv">1</span></div>
+          <div class="stat-item"><span class="stat-key">攻击</span><span class="stat-num" id="s-atk">10</span></div>
+          <div class="stat-item"><span class="stat-key">防御</span><span class="stat-num" id="s-def">5</span></div>
+          <div class="stat-item"><span class="stat-key">经验</span><span class="stat-num" id="s-exp">0/100</span></div>
+          <div class="stat-item"><span class="stat-key">金币</span><span class="stat-num" id="s-gold">20</span></div>
+        </div>
+      </div>
+      <div style="margin-bottom:20px;">
+        <div class="sec-label">背包</div>
+        <div class="inv-list" id="inv-list"><div class="empty-hint">空空如也</div></div>
+      </div>
+      <div>
+        <div class="sec-label">任务</div>
+        <div class="quest-list" id="quest-list"><div class="empty-hint">暂无任务</div></div>
+      </div>
+    </aside>
+    <main class="game-main">
+      <div class="narrative-area" id="narr-area"><div id="narr-content"></div></div>
+      <div class="choices-area" id="choices-area"></div>
+      <div class="input-area">
+        <input type="text" id="action-input" placeholder="输入你的行动..." autocomplete="off">
+        <button class="btn-send" id="btn-send">➤</button>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>⚙ 设置</h2>
+      <button class="modal-close" onclick="closeModal('modal-settings')">×</button>
+    </div>
+    <form id="settings-form">
+      <div class="form-group">
+        <label>API 代理地址（推荐）</label>
+        <input type="text" id="set-proxy" placeholder="https://your-worker.workers.dev">
+      </div>
+      <div class="form-group">
+        <label>或直接使用 API</label>
+        <input type="text" id="set-apiurl" placeholder="https://api.deepseek.com/chat/completions">
+      </div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input type="password" id="set-apikey" placeholder="sk-...">
+        <div class="form-hint">直接调用 API 时需要填写，使用代理则留空</div>
+      </div>
+      <div class="form-group">
+        <label>模型</label>
+        <select id="set-model">
+          <option value="deepseek-chat">DeepSeek Chat</option>
+          <option value="minimaxai/minimax-m3">MiniMax M3</option>
+          <option value="gpt-4o-mini">GPT-4o Mini</option>
+          <option value="gpt-4o">GPT-4o</option>
+          <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-ghost" onclick="closeModal('modal-settings')">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-save">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>💾 存档管理</h2>
+      <button class="modal-close" onclick="closeModal('modal-save')">×</button>
+    </div>
+    <div class="save-slots" id="save-slots"></div>
+    <div class="form-actions" style="margin-top:20px">
+      <button class="btn-primary" onclick="doManualSave()">保存当前进度</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORLDS=[{
+  id:'xuanhuan',name:'玄幻大陆',subtitle:'修仙问道·东方玄幻',
+  desc:'灵气充沛的东方世界，修炼者追寻天道，妖兽横行，仙门林立。',
+  accent:'#d4a853',accentLight:'#f0d080',accentDark:'#a07830',
+  startLoc:'青云镇',
+  intro:'你从昏迷中醒来，发现自己躺在一间简陋的茅屋里。窗外传来喧闹的人声，空气中弥漫着草药的苦涩气息。一位白发老者坐在床边，见你醒来，微微一笑："你终于醒了，从断崖上摔下来还能活命，真是命大。"',
+  promptExtra:'东方玄幻世界。有炼气、筑基、金丹、元婴等修炼境界。有灵石、法器、丹药。有妖兽、邪修、秘境。NPC用东方风格的名字和说话方式。'
+},{
+  id:'shadow',name:'暗影纪元',subtitle:'黑暗奇幻·中世纪',
+  desc:'被黑暗侵蚀的大陆，王国腐朽，怪物横行，唯有勇者能带来希望的微光。',
+  accent:'#c75b5b',accentLight:'#e87070',accentDark:'#8b3030',
+  startLoc:'灰烬村',
+  intro:'暴雨如注。你跪在泥泞之中，眼前是燃烧的废墟——曾经是你生活了二十年的家园。黑烟裹挟着焦臭味直冲天际。远处传来低沉的号角声，那是黑暗军团集结的信号。你颤抖着握紧手中唯一完好的东西——一把生锈的短剑。',
+  promptExtra:'黑暗奇幻中世纪。有骑士、法师、牧师等职业。有黑暗魔法、亡灵、恶魔。食物匮乏，生存艰难。NPC说话风格偏中古。色调灰暗压抑。'
+},{
+  id:'cyber',name:'赛博迷城',subtitle:'赛博朋克·未来都市',
+  desc:'2089年，巨型企业掌控一切。霓虹灯下的底层街区，义体改造与数据黑客是生存之道。',
+  accent:'#00e5ff',accentLight:'#40ffff',accentDark:'#0090a0',
+  startLoc:'新东京·下层区',
+  intro:'意识回笼的瞬间，你感受到的是后脑勺传来的剧痛。你躺在一张脏兮兮的手术台上，头顶的霓虹灯管闪烁不定。一个机械臂正在缝合你太阳穴上的伤口。"别动，还有三针。"一个沙哑的声音说。你试图回忆发生了什么，但记忆芯片里只剩下一片空白。',
+  promptExtra:'赛博朋克未来世界。有义体改造、神经链接、数据黑客、AI等科技元素。有企业武装、帮派、赛博精神病。NPC使用现代/未来风格语言。科技感十足但底层非常肮脏。'
+}];
+
+let G=null,loading=false,streamBuf='',entryEl=null,selectedWorld=null;
+
+function loadCfg(){try{return{proxy:'',apiUrl:'',apiKey:'',model:'minimaxai/minimax-m3',...JSON.parse(localStorage.getItem('mj_cfg')||'{}')}}catch(e){return{proxy:'',apiUrl:'',apiKey:'',model:'minimaxai/minimax-m3'}}}
+function saveCfg(c){localStorage.setItem('mj_cfg',JSON.stringify(c))}
+function getSaves(){try{return JSON.parse(localStorage.getItem('mj_saves')||'{}')}catch(e){return{}}}
+function writeSave(k,data){const s=getSaves();s[k]={data,ts:Date.now(),preview:`${G.player.name} · Lv.${G.player.level} · ${G.location}`};localStorage.setItem('mj_saves',JSON.stringify(s))}
+function readSave(k){const s=getSaves();return s[k]||null}
+function deleteSave(k){const s=getSaves();delete s[k];localStorage.setItem('mj_saves',JSON.stringify(s))}
+
+async function callAI(msgs,onChunk,onDone,onErr){
+  const cfg=loadCfg();
+  let url=cfg.proxy||cfg.apiUrl||'https://api.deepseek.com/chat/completions';
+  const hd={'Content-Type':'application/json'};
+  if(cfg.apiKey)hd['Authorization']='Bearer '+cfg.apiKey;
+  const body=JSON.stringify({model:cfg.model||'minimaxai/minimax-m3',messages:msgs,temperature:0.85,max_tokens:800,stream:true});
+  try{
+    const r=await fetch(url,{method:'POST',headers:hd,body});
+    if(!r.ok)throw new Error('API错误('+r.status+')：'+(await r.text()).substring(0,300));
+    if(r.body){
+      const reader=r.body.getReader();const dec=new TextDecoder();let buf='';
+      while(true){
+        const{done,value}=await reader.read();if(done)break;
+        buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+        for(const ln of lines){
+          const t=ln.trim();if(!t||!t.startsWith('data:'))continue;
+          const d=t.slice(5).trim();if(d==='[DONE]'){onDone();return}
+          try{const p=JSON.parse(d);const c=p.choices?.[0]?.delta?.content;if(c)onChunk(c)}catch(e){}
+        }
+      }
+      onDone();
+    }else{
+      const d=await r.json();const c=d.choices?.[0]?.message?.content;if(c)onChunk(c);onDone();
+    }
+  }catch(e){
+    try{
+      const r=await fetch(url,{method:'POST',headers:hd,body:JSON.stringify({model:cfg.model||'minimaxai/minimax-m3',messages:msgs,temperature:0.85,max_tokens:800,stream:false})});
+      const d=await r.json();const c=d.choices?.[0]?.message?.content;if(c){onChunk(c);onDone();return}
+    }catch(e2){}
+    onErr(e);
+  }
+}
+
+function buildPrompt(){
+  const w=WORLDS.find(x=>x.id===G.worldId);
+  return`你是「墨境」的文字RPG游戏主持人。用生动的中文讲述故事。
+
+## 世界：${w.name}
+${w.desc}
+${w.promptExtra}
+
+## 规则
+1. 每次回复150-300字，描写场景、对话和事件
+2. 使用标记触发游戏事件（玩家看不到）：
+[HP:+N][HP:-N][MP:+N][MP:-N][EXP:+N][GOLD:+N][GOLD:-N][获得物品:名][失去物品:名][到达地点:名][任务更新:描述][状态效果:名][LEVELUP]
+3. 结尾提供2-4个选项：
+【A】选项
+【B】选项
+4. 根据属性判定结果，战斗用ATK/DEF计算
+5. 经验满时 [LEVELUP]，升级公式：需要等级×100经验
+
+## 角色
+${G.player.name}|Lv.${G.player.level}|HP:${G.player.hp}/${G.player.maxHp} MP:${G.player.mp}/${G.player.maxMp}|ATK:${G.player.attack} DEF:${G.player.defense}|金币:${G.player.gold}
+背包：${G.player.inventory.length?G.player.inventory.join('、'):'空'}
+位置：${G.location}
+任务：${G.quests.length?G.quests.join('; '):'无'}
+${G.summary?'\n## 剧情摘要\n'+G.summary:''}`;
+}
+
+function buildMsgs(input){
+  return[{role:'system',content:buildPrompt()},...G.recent.slice(-12),{role:'user',content:input}];
+}
+
+function parseBuffer(text){
+  let safe=text.length;const lo=text.lastIndexOf('[');
+  if(lo>-1&&text.indexOf(']',lo)===-1)safe=lo;
+  const safeText=text.substring(0,safe);
+  const evts=[];
+  const clean=safeText.replace(/$$([^$$]+)\]/g,(m,inner)=>{
+    const pats=[/^(HP|MP|EXP|GOLD)[：:]([+-]?\d+)$/,/^(获得物品|失去物品|到达地点|任务更新|状态效果)[：:](.+)$/,/^(LEVELUP)$/];
+    for(const p of pats){const mm=inner.match(p);if(mm){evts.push({type:mm[1],val:mm[2]||true});return''}}
+    return m;
+  });
+  return{clean:clean.trim(),evts};
+}
+
+function parseComplete(text){
+  const evts=[];
+  let clean=text.replace(/$$([^$$]+)\]/g,(m,inner)=>{
+    const pats=[/^(HP|MP|EXP|GOLD)[：:]([+-]?\d+)$/,/^(获得物品|失去物品|到达地点|任务更新|状态效果)[：:](.+)$/,/^(LEVELUP)$/];
+    for(const p of pats){const mm=inner.match(p);if(mm){evts.push({type:mm[1],val:mm[2]||true});return''}}
+    return m;
+  });
+  const opts=[];const re=/【([A-D])】\s*([^【]+)/g;let m;
+  while((m=re.exec(clean))!==null)opts.push({l:m[1],t:m[2].trim()});
+  clean=clean.replace(/【[A-D]】[^【]*/g,'').trim();
+  return{clean,evts,opts};
+}
+
+function newGame(wid,name){
+  G={worldId:wid,player:{name,level:1,hp:100,maxHp:100,mp:50,maxMp:50,attack:10,defense:5,exp:0,gold:20,inventory:[]},
+    location:WORLDS.find(w=>w.id===wid).startLoc,quests:[],summary:'',recent:[],allMsgs:[],turn:0};
+}
+
+function applyEvts(evts){
+  const p=G.player;
+  for(const e of evts){
+    const v=parseInt(e.val);
+    switch(e.type){
+      case'HP':p.hp=Math.max(0,Math.min(p.maxHp,p.hp+v));flashStat('hp',v);if(p.hp<=0){addSys('你倒下了…但命运之轮再次转动。HP恢复至1。');p.hp=1}break;
+      case'MP':p.mp=Math.max(0,Math.min(p.maxMp,p.mp+v));flashStat('mp',v);break;
+      case'EXP':p.exp+=v;break;
+      case'GOLD':p.gold=Math.max(0,p.gold+v);flashStat('gold',v);break;
+      case'获得物品':if(!p.inventory.includes(e.val)){p.inventory.push(e.val);notify('获得：'+e.val,'item')}break;
+      case'失去物品':{const i=p.inventory.indexOf(e.val);if(i>-1){p.inventory.splice(i,1);notify('失去：'+e.val,'item')}}break;
+      case'到达地点':G.location=e.val;$('g-location').textContent=e.val;notify('到达：'+e.val,'location');break;
+      case'任务更新':if(!G.quests.includes(e.val)){G.quests.push(e.val);notify('任务：'+e.val,'quest')}break;
+      case'状态效果':notify('状态：'+e.val,'item');break;
+      case'LEVELUP':levelUp();break;
+    }
+  }
+  if(p.exp>=p.level*100)levelUp();
+  renderStats();
+}
+
+function levelUp(){
+  const p=G.player;p.level++;p.exp-=(p.level-1)*100;if(p.exp<0)p.exp=0;
+  p.maxHp+=15;p.hp=p.maxHp;p.maxMp+=10;p.mp=p.maxMp;p.attack+=3;p.defense+=2;
+  notify('升级！Lv.'+p.level,'levelup');addSys('✦ 升级！达到 Lv.'+p.level);
+}
+
+function $(id){return document.getElementById(id)}
+function showScreen(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$('screen-'+s).classList.add('active')}
+
+function renderStats(){
+  const p=G.player;
+  $('hp-bar').style.width=(p.hp/p.maxHp*100)+'%';
+  $('mp-bar').style.width=(p.mp/p.maxMp*100)+'%';
+  $('hp-val').textContent=p.hp+'/'+p.maxHp;
+  $('mp-val').textContent=p.mp+'/'+p.maxMp;
+  $('s-lv').textContent=p.level;
+  $('s-atk').textContent=p.attack;
+  $('s-def').textContent=p.defense;
+  $('s-exp').textContent=p.exp+'/'+p.level*100;
+  $('s-gold').textContent=p.gold;
+  $('g-location').textContent=G.location;
+  $('inv-list').innerHTML=p.inventory.length?p.inventory.map(i=>`<div class="inv-item">${esc(i)}</div>`).join(''):'<div class="empty-hint">空空如也</div>';
+  $('quest-list').innerHTML=G.quests.length?G.quests.map(q=>`<div class="quest-item">${esc(q)}</div>`).join(''):'<div class="empty-hint">暂无任务</div>';
+}
+
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function fmtText(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>')}
+function addEntry(text,cls){
+  const c=$('narr-content');const d=document.createElement('div');
+  d.className='narr-entry '+(cls||'');d.innerHTML=fmtText(text);c.appendChild(d);
+  const a=$('narr-area');a.scrollTop=a.scrollHeight;return d;
+}
+function addSys(t){addEntry(t,'system')}
+function updateEntry(el,text){el.innerHTML=fmtText(text);$('narr-area').scrollTop=$('narr-area').scrollHeight}
+function showThinking(){
+  const c=$('narr-content');const d=document.createElement('div');
+  d.className='thinking';d.id='thinking-ind';d.innerHTML='<span></span><span></span><span></span>';
+  c.appendChild(d);$('narr-area').scrollTop=$('narr-area').scrollHeight;
+}
+function hideThinking(){$('thinking-ind')?.remove()}
+function showChoices(opts){
+  const area=$('choices-area');area.innerHTML='';
+  opts.forEach((o,i)=>{
+    const b=document.createElement('button');b.className='choice-btn';
+    b.innerHTML=`<span class="choice-letter">${o.l}</span>${esc(o.t)}`;
+    b.style.opacity='0';b.style.transform='translateX(-10px)';
+    b.addEventListener('click',()=>doAction(`[${o.l}] ${o.t}`));
+    area.appendChild(b);
+    setTimeout(()=>{b.style.transition='all .3s ease';b.style.opacity='1';b.style.transform='translateX(0)'},i*80);
+  });
+}
+function clearChoices(){$('choices-area').innerHTML=''}
+function flashStat(stat,val){
+  const el=stat==='hp'?'hp-val':stat==='mp'?'mp-val':'s-gold';
+  const e=$(el);if(!e)return;
+  e.style.transition='none';e.style.color=val>0?'#5bc77b':'#c75b5b';e.style.transform='scale(1.15)';
+  requestAnimationFrame(()=>{e.style.transition='all .5s ease';e.style.color='';e.style.transform='scale(1)'});
+}
+function setLoad(v){
+  loading=v;$('btn-send').disabled=v;$('action-input').disabled=v;
+  if(v){clearChoices();showThinking()}else{hideThinking();$('action-input').focus()}
+}
+function notify(text,type='info'){
+  let w=$('notif-wrap');if(!w){w=document.createElement('div');w.id='notif-wrap';w.className='notif-wrap';document.body.appendChild(w)}
+  const n=document.createElement('div');n.className='notif notif-'+type;n.textContent=text;
+  w.appendChild(n);requestAnimationFrame(()=>requestAnimationFrame(()=>n.classList.add('show')));
+  setTimeout(()=>{n.classList.remove('show');setTimeout(()=>n.remove(),400)},3000);
+}
+function openModal(id){$(id).classList.add('active')}
+function closeModal(id){$(id).classList.remove('active')}
+
+async function doAction(text){
+  if(loading||!G)return;
+  addEntry(text,'player-action');
+  G.recent.push({role:'user',content:text});G.allMsgs.push({role:'user',content:text});
+  const msgs=buildMsgs(text);
+  setLoad(true);streamBuf='';entryEl=null;
+  await callAI(msgs,
+    chunk=>{
+      streamBuf+=chunk;
+      const{clean}=parseBuffer(streamBuf);
+      if(!entryEl&&clean.length>0){hideThinking();entryEl=addEntry('','')}
+      if(entryEl)updateEntry(entryEl,clean);
+    },
+    ()=>{
+      hideThinking();
+      const{clean,evts,opts}=parseComplete(streamBuf);
+      if(entryEl)updateEntry(entryEl,clean);else if(clean)addEntry(clean);
+      applyEvts(evts);
+      if(opts.length)showChoices(opts);
+      G.recent.push({role:'assistant',content:streamBuf});G.allMsgs.push({role:'assistant',content:streamBuf});
+      G.turn++;writeSave('auto');
+      if(G.turn%8===0)maybeSummary();
+      setLoad(false);
+    },
+    err=>{hideThinking();addSys('⚠ '+err.message);setLoad(false)}
+  );
+}
+
+async function maybeSummary(){
+  const sm=[{role:'system',content:'将以下RPG对话总结为100字以内的剧情摘要，保留关键事件、人物和当前状况。'},...G.allMsgs.slice(-20),{role:'user',content:'请总结剧情。'}];
+  let s='';try{await callAI(sm,c=>{s+=c},()=>{G.summary=s;if(G.allMsgs.length>30)G.allMsgs=G.allMsgs.slice(-10)},()=>{})}catch(e){}
+}
+
+function init(){
+  const wc=$('world-cards');
+  WORLDS.forEach(w=>{
+    const c=document.createElement('div');c.className='world-card';c.style.setProperty('--card-accent',w.accent);
+    c.innerHTML=`<div class="world-card-name" style="color:${w.accent}">${w.name}</div><div class="world-card-sub">${w.subtitle}</div><div class="world-card-desc">${w.desc}</div>`;
+    c.addEventListener('click',()=>{
+      document.querySelectorAll('.world-card').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');selectedWorld=w.id;
+      $('char-setup').style.display='flex';$('char-name').focus();
+    });
+    wc.appendChild(c);
+  });
+
+  $('btn-start').addEventListener('click',startGame);
+  $('char-name').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
+  $('action-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAction()}});
+  $('btn-send').addEventListener('click',sendAction);
+  $('btn-toggle-sidebar').addEventListener('click',()=>{$('game-sidebar').classList.toggle('open')});
+  $('btn-settings-title').addEventListener('click',()=>{populateSettings();openModal('modal-settings')});
+  $('btn-settings-game').addEventListener('click',()=>{populateSettings();openModal('modal-settings')});
+  $('settings-form').addEventListener('submit',e=>{e.preventDefault();doSaveSettings()});
+  $('btn-save-game').addEventListener('click',()=>{renderSaves();openModal('modal-save')});
+  $('btn-load-title').addEventListener('click',()=>{renderSaves();openModal('modal-save')});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.active').forEach(m=>m.classList.remove('active'))});
+
+  const cfg=loadCfg();
+  if(!cfg.proxy&&!cfg.apiKey){setTimeout(()=>{populateSettings();openModal('modal-settings')},600)}
+}
+
+function startGame(){
+  if(!selectedWorld){notify('请先选择一个世界','error');return}
+  const name=$('char-name').value.trim()||'旅人';
+  newGame(selectedWorld,name);
+  const w=WORLDS.find(x=>x.id===selectedWorld);
+  document.documentElement.style.setProperty('--accent',w.accent);
+  document.documentElement.style.setProperty('--accent-light',w.accentLight);
+  document.documentElement.style.setProperty('--accent-dark',w.accentDark);
+  showScreen('game');renderStats();
+  addEntry(w.intro);
+  doAction('【游戏开始】请描述我当前的处境和周围环境，然后给我几个行动选项。');
+}
+
+function sendAction(){
+  const inp=$('action-input');const t=inp.value.trim();if(!t||loading)return;
+  inp.value='';doAction(t);
+}
+
+function populateSettings(){
+  const c=loadCfg();$('set-proxy').value=c.proxy||'';$('set-apiurl').value=c.apiUrl||'';$('set-apikey').value=c.apiKey||'';$('set-model').value=c.model||'minimaxai/minimax-m3';
+}
+function doSaveSettings(){
+  saveCfg({proxy:$('set-proxy').value.trim(),apiUrl:$('set-apiurl').value.trim(),apiKey:$('set-apikey').value.trim(),model:$('set-model').value});
+  closeModal('modal-settings');notify('设置已保存','success');
+}
+
+function renderSaves(){
+  const slots=$('save-slots');const saves=getSaves();let h='';
+  const labels={auto:'自动存档',slot1:'存档 1',slot2:'存档 2',slot3:'存档 3'};
+  ['auto','slot1','slot2','slot3'].forEach(k=>{
+    const s=saves[k];
+    if(s){
+      const d=new Date(s.ts);const ts=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+      h+=`<div class="save-slot"><div><div class="save-slot-label">${labels[k]}</div><div class="save-slot-preview">${esc(s.preview)}</div><div class="save-slot-time">${ts}</div></div><div class="save-slot-btns"><button class="btn-sm" onclick="doLoadSave('${k}')">读取</button><button class="btn-sm danger" onclick="doDeleteSave('${k}')">删除</button></div></div>`;
+    }else{
+      h+=`<div class="save-slot"><div><div class="save-slot-label">${labels[k]}</div><div class="save-slot-empty">空</div></div></div>`;
+    }
+  });
+  slots.innerHTML=h;
+}
+function doLoadSave(k){
+  const s=readSave(k);if(!s){notify('存档为空','error');return}
+  G=s.data;const w=WORLDS.find(x=>x.id===G.worldId);
+  if(w){document.documentElement.style.setProperty('--accent',w.accent);document.documentElement.style.setProperty('--accent-light',w.accentLight);document.documentElement.style.setProperty('--accent-dark',w.accentDark)}
+  closeModal('modal-save');showScreen('game');renderStats();
+  $('narr-content').innerHTML='';
+  const last=G.allMsgs.slice(-6);
+  last.forEach(m=>{
+    if(m.role==='user')addEntry(m.content,'player-action');
+    else addEntry(m.content);
+  });
+  notify('存档已读取','success');
+}
+function doDeleteSave(k){deleteSave(k);renderSaves();notify('已删除','info')}
+function doManualSave(){
+  if(!G){notify('没有进行中的游戏','error');return}
+  writeSave('slot1',G);renderSaves();notify('已保存','success');
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

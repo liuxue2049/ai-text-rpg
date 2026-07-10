@@ -410,7 +410,7 @@ const WORLDS=[{
 
 let G=null,loading=false,streamBuf='',entryEl=null,selectedWorld=null;
 
-function loadCfg(){try{return{proxy:'',apiUrl:'',apiKey:'',model:'minimaxai/minimax-m3',...JSON.parse(localStorage.getItem('mj_cfg')||'{}')}}catch(e){return{proxy:'',apiUrl:'',apiKey:'',model:'minimaxai/minimax-m3'}}}
+function loadCfg(){try{return{proxy:'https://tiny-snowflake-b09c.meikoliu2020.workers.dev',apiUrl:'',apiKey:'',model:'minimaxai/minimax-m3',...JSON.parse(localStorage.getItem('mj_cfg')||'{}')}}catch(e){return{proxy:'https://tiny-snowflake-b09c.meikoliu2020.workers.dev',apiUrl:'',apiKey:'',model:'minimaxai/minimax-m3'}}}
 function saveCfg(c){localStorage.setItem('mj_cfg',JSON.stringify(c))}
 function getSaves(){try{return JSON.parse(localStorage.getItem('mj_saves')||'{}')}catch(e){return{}}}
 function writeSave(k,data){const s=getSaves();s[k]={data,ts:Date.now(),preview:`${G.player.name} · Lv.${G.player.level} · ${G.location}`};localStorage.setItem('mj_saves',JSON.stringify(s))}

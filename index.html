@@ -225,7 +225,7 @@ function buildPrompt(){
   var w=null;for(var i=0;i<WORLDS.length;i++){if(WORLDS[i].id===G.worldId)w=WORLDS[i];}
   return '你是「墨境」的文字RPG游戏主持人。用生动的中文讲述故事。\n\n## 世界：'+w.name+'\n'+w.desc+'\n'+w.promptExtra+'\n\n## 规则\n1. 每次回复150-300字\n2. 使用标记（玩家看不到）：\n[HP:+N][HP:-N][MP:+N][MP:-N][EXP:+N][GOLD:+N][GOLD:-N][获得物品:名][失去物品:名][到达地点:名][任务更新:描述][LEVELUP]\n3. 结尾提供2-4个选项：\n【A】选项\n【B】选项\n4. 经验满时[LEVELUP]\n\n## 角色\n'+G.player.name+'|Lv.'+G.player.level+'|HP:'+G.player.hp+'/'+G.player.maxHp+' MP:'+G.player.mp+'/'+G.player.maxMp+'|ATK:'+G.player.attack+' DEF:'+G.player.defense+'|金币:'+G.player.gold+'\n背包：'+(G.player.inventory.length?G.player.inventory.join('、'):'空')+'\n位置：'+G.location+'\n任务：'+(G.quests.length?G.quests.join('; '):'无')+(G.summary?'\n## 剧情摘要\n'+G.summary:'');
 }
-function buildMsgs(input){return[{role:'system',content:buildPrompt()}].concat(G.recent.slice(-12)).concat([{role:'user',content:input}]))}
+function buildMsgs(input){return[{role:'system',content:buildPrompt()}].concat(G.recent.slice(-12)).concat([{role:'user',content:input}])}
 
 function parseComplete(text){
   var evts=[];

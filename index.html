@@ -478,7 +478,7 @@ function parseComplete(text){
   var evts=[];
   var clean=text.replace(/$$([^$$]+)\]/g,function(m,inner){
     var p1=inner.match(/^(HP|MP|EXP|GOLD)[：:]([+-]?\d+)$/);
-    if(p1){evts.push({type:p1[1],val:p2[2]});return''}
+    if(p1){evts.push({type:p1[1],val:p1[2]});return''}
     var p2=inner.match(/^(获得物品|失去物品|到达地点|任务更新|状态效果)[：:](.+)$/);
     if(p2){evts.push({type:p2[1],val:p2[2]});return''}
     if(inner==='LEVELUP'){evts.push({type:'LEVELUP',val:true});return''}
